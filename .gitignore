@@ -5,6 +5,10 @@
 /.vscode
 shape*.bin
 
+# Package manager generated files
+.pkg.lock
+.pkg.mutex
+
 # Python build artifacts
 dist/
 *.egg-info/
