@@ -59,8 +59,8 @@ echo ""
 echo "Step 4: Creating Python wheel..."
 cd "$SCRIPT_DIR"
 
-# Ensure setuptools and wheel are installed
-python3 -m pip install --quiet setuptools wheel
+# Ensure setuptools and wheel are installed (use --break-system-packages for newer systems)
+python3 -m pip install --quiet --break-system-packages setuptools wheel 2>/dev/null || true
 
 # Build the wheel
 python3 setup.py bdist_wheel --quiet
