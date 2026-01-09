@@ -4,3 +4,14 @@
 /.clang-tidy
 /.vscode
 shape*.bin
+
+# Python build artifacts
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.so
+.venv/
+.pytest_cache/
+*.whl
