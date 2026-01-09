@@ -1,0 +1,14 @@
+[project]
+name = "nigiri"
+version = "0.1.0"
+description = "Python bindings for nigiri transit routing"
+requires-python = ">=3.11"
+dependencies = []
+
+[build-system]
+requires = ["setuptools>=64", "pybind11>=2.10"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nigiri*"]
