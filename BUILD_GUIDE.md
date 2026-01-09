@@ -11,7 +11,6 @@ Nigiri is a C++23 transit routing library with Python bindings created using pyb
 To build the wheel, run from the nigiri directory:
 
 ```bash
-cd /app/packages/cpp/nigiri
 ./build_wheel.sh
 ```
 
@@ -20,10 +19,10 @@ The wheel will be created at `dist/nigiri-0.1.0-cp311-cp311-linux_x86_64.whl`
 ## Requirements
 
 - **Python**: 3.11+
+- **pybind11**: Python binding library (`sudo apt install python3-pybind11` or `pip install pybind11`)
 - **CMake**: 3.25.1+
-- **C++ Compiler**: Supporting C++23
-- **uv**: Python package manager (for installing build dependencies)
-- **System Libraries**: All dependencies are bundled/built from source
+- **C++ Compiler**: Supporting C++23 (GCC 13+ or Clang 16+)
+- **System Libraries**: All C++ dependencies are bundled/built from source
 
 ## Build Process Details
 
@@ -76,11 +75,11 @@ nigiri-0.1.0-cp311-cp311-linux_x86_64.whl
 Install the wheel using uv or pip:
 
 ```bash
-# Using uv (recommended in this environment)
-uv pip install dist/nigiri-0.1.0-cp311-cp311-linux_x86_64.whl
-
 # Using pip
 pip install dist/nigiri-0.1.0-cp311-cp311-linux_x86_64.whl
+
+# Or with uv
+uv pip install dist/nigiri-0.1.0-cp311-cp311-linux_x86_64.whl
 ```
 
 ## Testing the Installation
@@ -135,20 +134,24 @@ To build wheels for multiple platforms, consider using:
 After a successful build:
 
 ```
-/app/packages/cpp/nigiri/
+nigiri/
 ├── build/                                    # CMake build directory
 │   ├── _nigiri.cpython-311-x86_64-linux-gnu.so  # Compiled extension (6.2M)
 │   ├── libnigiri.a                           # Static library
 │   └── deps/                                 # Compiled dependencies
 ├── dist/                                     # Distribution directory
 │   └── nigiri-0.1.0-cp311-cp311-linux_x86_64.whl  # Final wheel (2.3M)
-├── nigiri/                                   # Python package
-│   ├── __init__.py                          # Package init
-│   └── _nigiri.cpython-311-x86_64-linux-gnu.so  # Copy of extension
+├── nigiri/                                   # Python package source
+│   └── __init__.py                          # Package init file
+├── python/                                   # Python bindings source
+│   ├── CMakeLists.txt                       # Python build config
+│   └── bindings.cpp                         # pybind11 bindings
+├── deps/                                     # C++ dependencies (generated)
 ├── build_wheel.sh                           # Build script
 ├── test_wheel.sh                            # Test script
 ├── test_import.py                           # Python test script
 ├── setup.py                                 # Wheel packaging script
+├── pyproject.toml                           # Project metadata
 └── CMakeLists.txt                          # CMake build configuration
 ```
 
