@@ -92,7 +92,10 @@ void init_routing(py::module_& m) {
       .def_property("start_time",
         [](query const& q) -> py::object {
           if (std::holds_alternative<unixtime_t>(q.start_time_)) {
-            return py::cast(std::get<unixtime_t>(q.start_time_));
+            auto ut = std::get<unixtime_t>(q.start_time_);
+            // Convert to system_clock::time_point for pybind11's chrono support
+            auto tp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(ut);
+            return py::cast(tp);
           } else {
             return py::cast(std::get<interval<unixtime_t>>(q.start_time_));
           }
@@ -100,18 +103,25 @@ void init_routing(py::module_& m) {
         [](query& q, py::handle obj) {
           try {
             // Try to cast as interval first
-            q.start_time_ = obj.cast<interval<unixtime_t>>();
+            auto iv = obj.cast<interval<unixtime_t>>();
+            q.start_time_ = iv;
+            return;
           } catch (...) {
-            try {
-              // Try as int (from UnixTime.__int__() or plain int) - minutes since epoch
-              auto minutes = obj.cast<std::int64_t>();
-              q.start_time_ = unixtime_t{i32_minutes{static_cast<std::int32_t>(minutes)}};
-            } catch (...) {
-              // Fall back to chrono time_point conversion (datetime objects)
-              auto tp = obj.cast<std::chrono::system_clock::time_point>();
-              q.start_time_ = std::chrono::time_point_cast<i32_minutes>(tp);
-            }
+            // Not an interval, continue
           }
+          
+          try {
+            // Try datetime/time_point conversion
+            auto tp = obj.cast<std::chrono::system_clock::time_point>();
+            q.start_time_ = std::chrono::time_point_cast<i32_minutes>(tp);
+            return;
+          } catch (...) {
+            // Not a datetime, continue
+          }
+          
+          // Fall back to int (minutes since epoch)
+          auto minutes = obj.cast<std::int64_t>();
+          q.start_time_ = unixtime_t{i32_minutes{static_cast<std::int32_t>(minutes)}};
         })
       
       .def_readwrite("start_match_mode", &query::start_match_mode_)

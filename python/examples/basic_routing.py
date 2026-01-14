@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, 'build/python')
 
 import pynigiri as ng
-from datetime import datetime
+from datetime import datetime, timezone
 
 def main():
     print("Loading timetable...")
@@ -14,7 +14,7 @@ def main():
     sources = [
         ng.TimetableSource(
             tag="my_gtfs",
-            path="path/to/gtfs",  # Update with your GTFS path
+            path="python/examples/gtfs/de",  # Update with your GTFS path
             config=ng.LoaderConfig()
         )
     ]
@@ -22,8 +22,8 @@ def main():
     # Load timetable for date range
     timetable = ng.load_timetable(
         sources=sources,
-        start_date="2024-01-01",
-        end_date="2024-12-31"
+        start_date="2025-01-01",
+        end_date="2025-12-31"
     )
     
     print(f"Loaded timetable: {timetable}")
@@ -32,8 +32,8 @@ def main():
     
     # Find locations
     # Note: Replace these with actual location IDs from your GTFS data
-    start_loc_id = timetable.find_location("STATION_A_ID")
-    dest_loc_id = timetable.find_location("STATION_B_ID")
+    start_loc_id = timetable.find_location("620363") # Example: Hamburg Hbf ID
+    dest_loc_id = timetable.find_location("112300") # Example: Berlin Hbf ID
     
     if start_loc_id is None or dest_loc_id is None:
         print("Error: Could not find one or both locations")
@@ -45,17 +45,27 @@ def main():
     # Create routing query
     query = ng.Query()
     
-    # Set start time (Unix timestamp)
-    query_time = ng.UnixTime(int(datetime(2024, 6, 1, 8, 0).timestamp()))
-    query.start_time = query_time
+    # Set start time (use datetime object directly)
+    query.start_time = datetime(2025, 6, 15, 9, 0, tzinfo=timezone.utc)
+    
+    # Set matching modes
+    query.start_match_mode = ng.LocationMatchMode.EQUIVALENT
+    query.dest_match_mode = ng.LocationMatchMode.EQUIVALENT
     
     # Set start and destination with offsets
-    query.start = [ng.Offset(start_loc_id, ng.Duration(0), ng.TransportModeId(0))]
-    query.destination = [ng.Offset(dest_loc_id, ng.Duration(0), ng.TransportModeId(0))]
+    from datetime import timedelta
+    query.start = [ng.Offset(start_loc_id, timedelta(0), ng.TransportModeId(0))]
+    query.destination = [ng.Offset(dest_loc_id, timedelta(0), ng.TransportModeId(0))]
     
     # Set routing parameters
-    query.max_transfers = 3
-    query.max_travel_time = ng.Duration(120)  # 120 minutes
+    query.max_transfers = 5
+    query.min_connection_count = 1
+    query.max_travel_time = timedelta(hours=6)  # Hamburg-Berlin takes ~2 hours
+    
+    print(f"\nQuery details:")
+    print(f"  Start time: {query.start_time}")
+    print(f"  Max transfers: {query.max_transfers}")
+    print(f"  Max travel time: {query.max_travel_time}")
     
     print(f"\nExecuting routing query...")
     journeys = ng.route(timetable, query)

@@ -3,5 +3,7 @@
 /.idea
 /.clang-tidy
 /.vscode
+/.venv
 shape*.bin
 python/python_build/
+/python/examples/gtfs
