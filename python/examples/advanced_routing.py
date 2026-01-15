@@ -1,16 +1,14 @@
 """
 Advanced routing example: Using advanced query features.
 """
-import sys
-sys.path.insert(0, 'build/python')
-
 import pynigiri as ng
 from datetime import datetime, timedelta
+from const import GTFS_PATH, STATION_ID_A, STATION_ID_B
 
 def main():
     # Load timetable (as in basic example)
-    sources = [ng.TimetableSource("my_gtfs", "path/to/gtfs")]
-    timetable = ng.load_timetable(sources, "2024-01-01", "2024-12-31")
+    sources = [ng.TimetableSource("my_gtfs", str(GTFS_PATH))]
+    timetable = ng.load_timetable(sources, "2026-01-01", "2026-12-31")
     
     print("=== Advanced Routing Examples ===\n")
     
@@ -18,8 +16,8 @@ def main():
     print("1. Routing with intermediate stops (via):")
     query = ng.Query()
     
-    start_loc = timetable.find_location("STATION_A")
-    via_loc = timetable.find_location("STATION_B")
+    start_loc = timetable.find_location(STATION_ID_A)
+    via_loc = timetable.find_location(STATION_ID_B)
     dest_loc = timetable.find_location("STATION_C")
     
     if all([start_loc, via_loc, dest_loc]):
@@ -95,8 +93,8 @@ def main():
     print("5. Routing with multiple start/destination points:")
     query5 = ng.Query()
     
-    start_a = timetable.find_location("STATION_A")
-    start_b = timetable.find_location("STATION_B")
+    start_a = timetable.find_location(STATION_ID_A)
+    start_b = timetable.find_location(STATION_ID_B)
     dest_a = timetable.find_location("STATION_C")
     dest_b = timetable.find_location("STATION_D")
     

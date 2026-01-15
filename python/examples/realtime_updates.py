@@ -1,13 +1,10 @@
 """
 Real-time update example: Apply GTFS-RT updates to a timetable.
 """
-import sys
-sys.path.insert(0, 'build/python')
-
+import requests
 import pynigiri as ng
 from datetime import datetime
-import requests
-
+from const import GTFS_PATH, GTFS_RT_PATH, GTFS_RT_URL
 def main():
     print("Loading static timetable...")
     
@@ -15,15 +12,15 @@ def main():
     sources = [
         ng.TimetableSource(
             tag="my_gtfs",
-            path="path/to/gtfs",
+            path=str(GTFS_PATH),
             config=ng.LoaderConfig()
         )
     ]
     
     timetable = ng.load_timetable(
         sources=sources,
-        start_date="2024-01-01",
-        end_date="2024-12-31"
+        start_date="2025-01-01",
+        end_date="2025-12-31"
     )
     
     print(f"Loaded timetable: {timetable}")
@@ -39,8 +36,7 @@ def main():
     
     # Option 1: Load GTFS-RT from URL
     try:
-        url = "https://example.com/gtfs-rt/tripupdates"  # Update with actual URL
-        response = requests.get(url)
+        response = requests.get(str(GTFS_RT_URL))
         
         if response.status_code == 200:
             print("\nApplying GTFS-RT updates from URL...")
@@ -67,7 +63,7 @@ def main():
             rt_timetable=rt_tt,
             source=ng.SourceIdx(0),
             tag="local_updates",
-            file_path="path/to/gtfs-rt.pb"  # Update with actual path
+            file_path=str(GTFS_RT_PATH)  # Update with actual path
         )
         
         print(f"File update statistics: {stats}")

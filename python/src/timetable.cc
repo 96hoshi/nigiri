@@ -78,10 +78,11 @@ void init_timetable(py::module_& m) {
       // Date info
       .def("date_range",
            [](timetable const& tt) {
-             return std::make_pair(
-               tt.internal_interval_days().from_,
-               tt.internal_interval_days().to_
-             );
+             auto range = tt.internal_interval_days();
+             // Convert to system_clock::time_point for pybind11's chrono support
+             auto from_tp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(range.from_);
+             auto to_tp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(range.to_);
+             return std::make_pair(from_tp, to_tp);
            },
            "Get timetable date range")
       

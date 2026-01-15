@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 """Comprehensive test suite for pynigiri bindings"""
-
-import sys
-import os
-sys.path.insert(0, 'build/python')
-
 import pynigiri as pn
 
 def test_1_module_import():

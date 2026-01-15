@@ -7,6 +7,9 @@ sys.path.insert(0, 'build/python')
 import pynigiri as pn
 from datetime import timedelta
 
+GTFS_PATH = "tests/test_data/gtfs/de"
+
+
 print("="*70)
 print("PYNIGIRI - FINAL COMPREHENSIVE TEST")
 print("="*70)
@@ -32,7 +35,7 @@ tests_passed += 1
 
 # Test 3: Timetable source
 print("\n✓ TEST 3: TimetableSource")
-source = pn.TimetableSource("gtfs", "/path/to/gtfs", config)
+source = pn.TimetableSource("gtfs", GTFS_PATH, config)
 print(f"  - Source tag: {source.tag}")
 print(f"  - Source path: {source.path}")
 tests_passed += 1

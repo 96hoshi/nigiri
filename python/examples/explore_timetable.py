@@ -1,15 +1,13 @@
 """
 Example: Exploring timetable data.
 """
-import sys
-sys.path.insert(0, 'build/python')
-
 import pynigiri as ng
+from const import GTFS_PATH, STATION_ID_A, INVALID_LOCATION_IDX
 
 def main():
     # Load timetable
-    sources = [ng.TimetableSource("my_gtfs", "path/to/gtfs")]
-    timetable = ng.load_timetable(sources, "2024-01-01", "2024-12-31")
+    sources = [ng.TimetableSource("my_gtfs", str(GTFS_PATH))]
+    timetable = ng.load_timetable(sources, "2026-01-01", "2026-12-31")
     
     print("=== Timetable Information ===\n")
     
@@ -35,18 +33,18 @@ def main():
         coords = timetable.get_location_coords(loc_idx)
         loc_type = timetable.get_location_type(loc_idx)
         parent = timetable.get_location_parent(loc_idx)
+        parent_display = "None" if int(parent) == INVALID_LOCATION_IDX else str(parent)
         
         print(f"\nLocation {i}:")
         print(f"  Name: {name}")
         print(f"  Type: {loc_type}")
         print(f"  Coordinates: ({coords.lat:.6f}, {coords.lng:.6f})")
-        print(f"  Parent: {parent}")
+        print(f"  Parent: {parent_display}")
     
     # Find specific location
     print("\n=== Location Lookup ===")
     # Example: Find a location by ID
-    # Replace with actual location ID from your data
-    sample_id = "STATION_ID_123"
+    sample_id = STATION_ID_A
     found = timetable.find_location(sample_id)
     
     if found is not None:
@@ -54,6 +52,8 @@ def main():
         print(f"  Name: {timetable.get_location_name(found)}")
         coords = timetable.get_location_coords(found)
         print(f"  Coordinates: ({coords.lat:.6f}, {coords.lng:.6f})")
+        print(f"  Type: {timetable.get_location_type(found)}")
+        print(f"  Parent: {timetable.get_location_parent(found)}")
     else:
         print(f"Location '{sample_id}' not found")
 
