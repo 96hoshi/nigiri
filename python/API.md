@@ -2,38 +2,61 @@
 
 Complete API reference for the PyNigiri Python bindings.
 
-## ⚠️ Known Issues & Best Practices
+## Time API Design
 
-### DateTime Handling
+PyNigiri uses a clean integer-based time API:
 
-The pybind11 chrono bindings have issues with nigiri's custom time types (`i32_minutes`). Follow these guidelines:
+- **All times are integers**: Minutes since Unix epoch (1970-01-01 00:00:00 UTC)
+- **All durations are integers**: Number of minutes
+- **Simple and explicit**: No automatic datetime conversions that could cause bugs
 
-1. **For input:** Use Python's `datetime.datetime` and `datetime.timedelta`
-2. **For query.start_time:** Convert to MINUTES not seconds: `int(dt.timestamp()) // 60`
-3. **Avoid:** `ng.Duration()` and `ng.UnixTime()` - they have repr/conversion issues
-4. **Reading times:** Times from journey results may show as 1970-01-01 dates due to conversion bugs
+### Converting Between Python datetime and Integers
+
+```python
+from datetime import datetime
+
+# Python datetime → Integer (minutes since epoch)
+dt = datetime(2026, 1, 15, 10, 0, 0)
+minutes = int(dt.timestamp()) // 60
+
+# Integer (minutes since epoch) → Python datetime
+dt = datetime.fromtimestamp(minutes * 60)
+```
 
 ### Working Example
 
 ```python
-from datetime import datetime, timedelta
+from datetime import datetime
 import pynigiri as ng
 
-# Load timetable (use current year for your GTFS data)
+# Load timetable
 sources = [ng.TimetableSource("gtfs", "/path/to/gtfs")]
 tt = ng.load_timetable(sources, "2026-01-01", "2026-12-31")
 
-# Setup query with correct time conversion
+# Setup query with integer times
 query = ng.Query()
 query_time = datetime(2026, 1, 15, 10, 0, 0)
-query.start_time = int(query_time.timestamp()) // 60  # Minutes!
-query.start = [ng.Offset(start_loc, timedelta(0), 0)]
-query.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
+query.start_time = int(query_time.timestamp()) // 60  # Convert to minutes
+
+# All durations and offsets are integers (minutes)
+query.start = [ng.Offset(start_loc, 0, 0)]  # 0 minutes offset
+query.destination = [ng.Offset(dest_loc, 0, 0)]
 query.max_transfers = 6
-query.max_travel_time = timedelta(hours=10)
+query.max_travel_time = 600  # 10 hours = 600 minutes
 
 # Execute
 journeys = ng.route(tt, query)
+
+# Results use integers for times
+for journey in journeys:
+    travel_minutes = journey.travel_time()  # Returns int
+    for leg in journey.legs:
+        dep_minutes = leg.dep_time  # Returns int (minutes since epoch)
+        arr_minutes = leg.arr_time  # Returns int (minutes since epoch)
+        
+        # Convert back to datetime for display if needed
+        dep_dt = datetime.fromtimestamp(dep_minutes * 60)
+        arr_dt = datetime.fromtimestamp(arr_minutes * 60)
 ```
 
 ## Table of Contents
@@ -70,49 +93,43 @@ print(int(idx))  # 42
 
 ### Duration
 
-⚠️ **DEPRECATED - Do not use directly**
+Represents a time duration in minutes.
 
-Represents a time duration in minutes. Due to pybind11 chrono conversion issues, this type has broken `__repr__` behavior.
+**Type:** `int` (number of minutes)
 
-**Recommendation:** Use Python's `datetime.timedelta` instead for all duration inputs.
+**Example:**
 
 ```python
-from datetime import timedelta
+# Durations are simple integers
+duration = 30  # 30 minutes
+query.max_travel_time = 120  # 2 hours
 
-# Use this:
-duration = timedelta(minutes=30)
-
-# NOT this:
-# d = ng.Duration(30)  # Has repr issues
-```
-
-**When reading durations from results:**
-```python
-travel_time = journey.travel_time()
-minutes = travel_time.count()  # This works
-print(minutes)  # Prints: 30
+# ViaStop stay time
+via = ng.ViaStop()
+via.stay = 10  # 10 minutes minimum stay
 ```
 
 ### UnixTime
 
-⚠️ **DEPRECATED - Do not use directly**
+Represents a Unix timestamp in minutes since epoch.
 
-Represents a Unix timestamp. Due to pybind11 chrono conversion issues, this type cannot properly convert back to Python datetime objects and will show 1970-01-01 dates.
+**Type:** `int` (minutes since 1970-01-01 00:00:00 UTC)
 
-**Recommendation:** Use Python's `datetime.datetime` and integer timestamps instead.
+**Example:**
 
 ```python
 from datetime import datetime
 
-# For setting query times, convert datetime to MINUTES (not seconds):
-query_time = datetime(2026, 1, 15, 10, 0, 0)
-query.start_time = int(query_time.timestamp()) // 60  # Divide by 60!
+# Convert Python datetime to minutes since epoch
+dt = datetime(2026, 1, 15, 10, 0, 0)
+minutes = int(dt.timestamp()) // 60
 
-# NOT this:
-# query.start_time = ng.UnixTime(...)  # Will cause conversion issues
+# Use in query
+query.start_time = minutes
+
+# Convert back from minutes to datetime
+dt = datetime.fromtimestamp(minutes * 60)
 ```
-
-**⚠️ CRITICAL:** The nigiri C++ library uses minute-based time internally. When setting `query.start_time` with an integer, you MUST convert seconds to minutes by dividing by 60.
 
 ### LatLng
 
@@ -386,11 +403,11 @@ Query()
 
 **Attributes:**
 
-- `start_time`: Start time (UnixTime or TimeInterval)
+- `start_time`: Start time (int: minutes since epoch, or tuple of ints for interval)
 - `start`: List of start locations with offsets
 - `destination`: List of destination locations with offsets
 - `max_transfers`: Maximum number of transfers (default: 7)
-- `max_travel_time`: Maximum travel time
+- `max_travel_time`: Maximum travel time (int: minutes)
 - `max_start_offset`: Maximum offset from start location
 - `start_match_mode`: Location matching mode for start
 - `dest_match_mode`: Location matching mode for destination
@@ -402,7 +419,7 @@ Query()
 - `via_stops`: List of intermediate stops
 - `extend_interval_earlier`: Extend search interval earlier
 - `extend_interval_later`: Extend search interval later
-- `slow_direct`: Allow slower direct connections
+- `min_connection_count`: Minimum number of connections to find
 
 **Methods:**
 
@@ -411,19 +428,19 @@ Query()
 **Example:**
 
 ```python
-from datetime import datetime, timedelta
+from datetime import datetime
 
 query = ng.Query()
 
-# Convert datetime to MINUTES (not seconds!) - critical!
+# Convert datetime to minutes since epoch
 query_time = datetime(2026, 1, 15, 10, 0, 0)
-query.start_time = int(query_time.timestamp()) // 60  # Divide by 60!
+query.start_time = int(query_time.timestamp()) // 60
 
-# Use timedelta and plain int (not Duration/TransportModeId)
-query.start = [ng.Offset(start_loc, timedelta(0), 0)]
-query.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
+# All durations are integers (minutes)
+query.start = [ng.Offset(start_loc, 0, 0)]  # 0 minutes offset
+query.destination = [ng.Offset(dest_loc, 0, 0)]
 query.max_transfers = 3
-query.max_travel_time = timedelta(hours=10)
+query.max_travel_time = 600  # 10 hours in minutes
 
 # Set match modes
 query.start_match_mode = ng.LocationMatchMode.EQUIVALENT
@@ -432,32 +449,36 @@ query.dest_match_mode = ng.LocationMatchMode.EQUIVALENT
 
 ### Offset
 
-Location offset for start/destination.
+Location offset for start/destination with duration.
 
 ```python
-from datetime import timedelta
-
 Offset(
     target: LocationIdx,
-    duration: timedelta,  # Use timedelta, not Duration
-    transport_mode: int = 0  # Use int, not TransportModeId
+    duration: int,  # Minutes
+    transport_mode: int = 0
 )
 ```
 
-**Example:**
-```python
-from datetime import timedelta
+**Parameters:**
 
-# Correct usage:
-query.start = [ng.Offset(start_loc, timedelta(0), 0)]
-query.destination = [ng.Offset(dest_loc, timedelta(minutes=5), 0)]
-```
+- `target`: Target location index
+- `duration`: Duration in minutes to reach this location
+- `transport_mode`: Transport mode ID (0 = walking)
 
 **Methods:**
 
 - `target() -> LocationIdx`: Get target location
-- `duration() -> Duration`: Get duration (returns Duration object)
+- `duration() -> int`: Get duration in minutes
 - `type() -> int`: Get transport mode
+
+**Example:**
+```python
+# Direct access (0 minutes walk)
+query.start = [ng.Offset(start_loc, 0, 0)]
+
+# 5 minute walk to destination
+query.destination = [ng.Offset(dest_loc, 5, 1)]
+```
 
 ### ViaStop
 
@@ -469,8 +490,17 @@ ViaStop()
 
 **Attributes:**
 
-- `location`: Location index
-- `stay`: Minimum stay duration
+- `location`: Location index (LocationIdx)
+- `stay`: Minimum stay duration in minutes (int)
+
+**Example:**
+
+```python
+via = ng.ViaStop()
+via.location = intermediate_loc
+via.stay = 10  # 10 minutes minimum stay
+query.via_stops = [via]
+```
 
 ### LocationMatchMode
 
@@ -488,16 +518,16 @@ Routing result representing one journey.
 **Attributes:**
 
 - `legs`: List of journey legs
-- `start_time`: Journey start time
-- `dest_time`: Journey destination time
+- `start_time`: Journey start time (int: minutes since epoch)
+- `dest_time`: Journey destination time (int: minutes since epoch)
 - `transfers`: Number of transfers
 - `price`: Journey price (if available)
 
 **Methods:**
 
-- `travel_time() -> Duration`: Get total travel time
-- `departure_time() -> UnixTime`: Get departure time
-- `arrival_time() -> UnixTime`: Get arrival time
+- `travel_time() -> int`: Get total travel time in minutes
+- `departure_time() -> int`: Get departure time (minutes since epoch)
+- `arrival_time() -> int`: Get arrival time (minutes since epoch)
 - `dominates(other: Journey) -> bool`: Check if dominates another journey
 - `__len__() -> int`: Get number of legs
 - `__getitem__(index: int) -> Leg`: Get leg by index
@@ -505,12 +535,18 @@ Routing result representing one journey.
 **Example:**
 
 ```python
+from datetime import datetime
+
 for journey in journeys:
-    # Note: departure_time() and arrival_time() may show 1970 dates
-    # due to datetime conversion issues in bindings
-    print(f"Travel time: {journey.travel_time().count()} minutes")
+    print(f"Travel time: {journey.travel_time()} minutes")
     print(f"Transfers: {journey.transfers}")
     print(f"Number of legs: {len(journey)}")
+
+    # Convert times to datetime for display
+    dep_dt = datetime.fromtimestamp(journey.departure_time() * 60)
+    arr_dt = datetime.fromtimestamp(journey.arrival_time() * 60)
+    print(f"Departs: {dep_dt.strftime('%Y-%m-%d %H:%M')}")
+    print(f"Arrives: {arr_dt.strftime('%Y-%m-%d %H:%M')}")
 
     for leg in journey.legs:
         # Access 'from' with getattr since it's a Python keyword
@@ -527,11 +563,29 @@ One segment of a journey.
 
 **Attributes:**
 
-- `from_`: Start location
-- `to_`: End location
-- `dep_time`: Departure time
-- `arr_time`: Arrival time
+- `from_`: Start location (LocationIdx)
+- `to_`: End location (LocationIdx)
+- `dep_time`: Departure time (int: minutes since epoch)
+- `arr_time`: Arrival time (int: minutes since epoch)
 - `uses_`: Transport used (run, footpath, or offset)
+
+**Note:** Use `getattr(leg, 'from')` to access the `from_` attribute since `from` is a Python keyword.
+
+**Example:**
+
+```python
+from datetime import datetime
+
+for leg in journey.legs:
+    from_loc = getattr(leg, 'from')
+    to_loc = leg.to
+    
+    # Convert integer times to datetime
+    dep_dt = datetime.fromtimestamp(leg.dep_time * 60)
+    arr_dt = datetime.fromtimestamp(leg.arr_time * 60)
+    
+    print(f"{dep_dt.strftime('%H:%M')} -> {arr_dt.strftime('%H:%M')}")
+```
 
 ### route()
 

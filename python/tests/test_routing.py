@@ -9,7 +9,7 @@ from datetime import timedelta, datetime
 def test_offset():
     """Test Offset creation."""
     target = ng.LocationIdx(10)
-    duration = timedelta(minutes=5)
+    duration = 5  # Minutes as int
     mode = 0  # TransportModeId is just an int
     
     offset = ng.Offset(target, duration, mode)
@@ -31,10 +31,10 @@ def test_via_stop():
     """Test ViaStop creation."""
     via = ng.ViaStop()
     via.location = ng.LocationIdx(5)
-    via.stay = timedelta(minutes=10)
+    via.stay = 10  # 10 minutes
     
     assert via.location == ng.LocationIdx(5)
-    assert via.stay.total_seconds() == 600
+    assert via.stay == 10
 
 
 def test_location_match_mode():
@@ -63,11 +63,11 @@ def test_query_creation():
     
     # Set basic properties
     query.max_transfers = 3
-    query.max_travel_time = timedelta(hours=2)
+    query.max_travel_time = 120  # 2 hours in minutes
     query.require_bike_transport = True
     
     assert query.max_transfers == 3
-    assert query.max_travel_time.total_seconds() == 7200
+    assert query.max_travel_time == 120
     assert query.require_bike_transport == True
 
 
@@ -75,8 +75,8 @@ def test_query_with_offsets():
     """Test Query with start and destination offsets."""
     query = ng.Query()
     
-    start = ng.Offset(ng.LocationIdx(1), timedelta(0), 0)
-    dest = ng.Offset(ng.LocationIdx(2), timedelta(0), 0)
+    start = ng.Offset(ng.LocationIdx(1), 0, 0)  # 0 minutes
+    dest = ng.Offset(ng.LocationIdx(2), 0, 0)
     
     query.start = [start]
     query.destination = [dest]
@@ -91,7 +91,7 @@ def test_query_with_via_stops():
     
     via = ng.ViaStop()
     via.location = ng.LocationIdx(5)
-    via.stay = timedelta(minutes=5)
+    via.stay = 5  # 5 minutes
     
     query.via_stops = [via]
     

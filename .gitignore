@@ -6,4 +6,4 @@
 /.venv
 shape*.bin
 python/python_build/
-/python/examples/gtfs
+__pycache__

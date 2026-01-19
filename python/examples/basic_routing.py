@@ -56,14 +56,14 @@ def main():
     query.start_match_mode = ng.LocationMatchMode.EQUIVALENT
     query.dest_match_mode = ng.LocationMatchMode.EQUIVALENT
     
-    # Set start and destination with offsets (0 offset, any transport mode)
-    query.start = [ng.Offset(start_loc_id, timedelta(0), 0)]
-    query.destination = [ng.Offset(dest_loc_id, timedelta(0), 0)]
+    # Set start and destination with offsets (0 minutes offset)
+    query.start = [ng.Offset(start_loc_id, 0, 0)]
+    query.destination = [ng.Offset(dest_loc_id, 0, 0)]
     
     # Set routing parameters
     query.max_transfers = 6
     query.min_connection_count = 1
-    query.max_travel_time = timedelta(hours=10)  # Hamburg-Berlin takes ~2 hours
+    query.max_travel_time = 600  # 10 hours in minutes
     
     print(f"\nQuery details:")
     print(f"  Start time: {query_time}")
@@ -79,8 +79,8 @@ def main():
     for i, journey in enumerate(journeys, 1):
         print(f"\n--- Journey {i} ---")
         
-        # Note: journey times may show as 1970 dates due to datetime conversion issues in bindings
-        # The routing is working correctly, but displaying the actual time requires workarounds
+        # Times are integers (minutes since epoch)
+        print(f"Travel time: {journey.travel_time()} minutes")
         print(f"Transfers: {journey.transfers}")
         print(f"Number of legs: {len(journey)}")
         
@@ -91,7 +91,12 @@ def main():
             from_name = timetable.get_location_name(from_loc)
             to_name = timetable.get_location_name(to_loc)
             
+            # Convert minutes to datetime for display
+            dep_time = datetime.fromtimestamp(leg.dep_time * 60)
+            arr_time = datetime.fromtimestamp(leg.arr_time * 60)
+            
             print(f"  Leg {j}: {from_name} -> {to_name}")
+            print(f"         {dep_time.strftime('%H:%M')} -> {arr_time.strftime('%H:%M')}")
 
 if __name__ == "__main__":
     main()

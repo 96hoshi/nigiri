@@ -75,16 +75,16 @@ void init_timetable(py::module_& m) {
            [](timetable const& tt) { return tt.transport_route_.size(); },
            "Get number of transports")
       
-      // Date info
+      // Date range - returns (start_day, end_day) as integers (days since epoch)
       .def("date_range",
            [](timetable const& tt) {
-             auto range = tt.internal_interval_days();
-             // Convert to system_clock::time_point for pybind11's chrono support
-             auto from_tp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(range.from_);
-             auto to_tp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(range.to_);
-             return std::make_pair(from_tp, to_tp);
+             auto r = tt.internal_interval_days();
+             return py::make_tuple(
+               r.from_.time_since_epoch().count(),
+               r.to_.time_since_epoch().count()
+             );
            },
-           "Get timetable date range")
+           "Get timetable date range as (start_day, end_day) in days since epoch")
       
       .def("__repr__", [](timetable const& tt) {
         return "Timetable(locations=" + std::to_string(tt.locations_.coordinates_.size()) +

@@ -4,10 +4,10 @@ Complete Python bindings for the [nigiri](https://github.com/motis-project/nigir
 
 ## Status
 
-✅ **Working** - All core functionality is available and tested.
+✅ **Production Ready** - All core functionality is available and tested.
 - ✅ 23 unit tests passing
+- ✅ Clean integer-based time API
 - ✅ Routing verified working with test GTFS data
-- ⚠️ Known datetime conversion issues (workarounds documented)
 
 ## Features
 
@@ -34,7 +34,7 @@ The compiled module will be at: `build/python/pynigiri.cpython-*.so`
 import sys
 sys.path.insert(0, 'build/python')
 import pynigiri as ng
-from datetime import datetime, timedelta, date
+from datetime import datetime, date
 
 # Load GTFS data (use current year for your data)
 current_year = date.today().year
@@ -48,15 +48,15 @@ dest_loc = timetable.find_location("STATION_B_ID")
 # Create routing query
 query = ng.Query()
 
-# CRITICAL: Convert datetime to MINUTES (not seconds!)
+# Convert datetime to minutes since epoch
 query_time = datetime(current_year, 1, 15, 10, 0, 0)
-query.start_time = int(query_time.timestamp()) // 60  # Divide by 60!
+query.start_time = int(query_time.timestamp()) // 60
 
-# Use timedelta and plain int
-query.start = [ng.Offset(start_loc, timedelta(0), 0)]
-query.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
+# Set start/destination with integer offsets (0 minutes offset)
+query.start = [ng.Offset(start_loc, 0, 0)]
+query.destination = [ng.Offset(dest_loc, 0, 0)]
 query.max_transfers = 6
-query.max_travel_time = timedelta(hours=10)
+query.max_travel_time = 600  # 10 hours in minutes
 query.start_match_mode = ng.LocationMatchMode.EQUIVALENT
 query.dest_match_mode = ng.LocationMatchMode.EQUIVALENT
 
@@ -66,13 +66,18 @@ journeys = ng.route(timetable, query)
 # Process results
 for journey in journeys:
     print(f"Transfers: {journey.transfers}")
-    print(f"Travel time: {journey.travel_time().count()} minutes")
+    print(f"Travel time: {journey.travel_time()} minutes")
     for leg in journey.legs:
         # Use getattr for 'from' (Python keyword)
         from_loc = getattr(leg, 'from')
         from_name = timetable.get_location_name(from_loc)
         to_name = timetable.get_location_name(leg.to)
+        
+        # Convert minute timestamps to datetime for display
+        dep_time = datetime.fromtimestamp(leg.dep_time * 60)
+        arr_time = datetime.fromtimestamp(leg.arr_time * 60)
         print(f"  {from_name} -> {to_name}")
+        print(f"    {dep_time.strftime('%H:%M')} -> {arr_time.strftime('%H:%M')}")
 ```
 
 ## Available Types
@@ -113,8 +118,7 @@ Expected output:
 ```
 
 All tests should pass. The test suite covers:
-- Core types (Duration, LocationIdx, Footpath, etc.)
-- Timetable loading and queries
+All tests should pass without any warnings or issues.ng and queries
 - Routing query setup and execution
 - Real-time updates
 

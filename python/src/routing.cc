@@ -25,12 +25,14 @@ void init_routing(py::module_& m) {
 
   // Offset
   py::class_<offset>(m, "Offset")
-      .def(py::init<location_idx_t, duration_t, transport_mode_id_t>(),
+      .def(py::init([](location_idx_t loc, int minutes, transport_mode_id_t mode) {
+        return offset{loc, duration_t{i32_minutes{minutes}}, mode};
+      }),
            py::arg("target"),
            py::arg("duration"),
            py::arg("transport_mode") = transport_mode_id_t{0})
       .def("target", &offset::target)
-      .def("duration", &offset::duration)
+      .def("duration", [](offset const& o) { return o.duration().count(); })
       .def("type", &offset::type)
       .def(py::self == py::self)
       .def(py::self < py::self)
@@ -55,7 +57,9 @@ void init_routing(py::module_& m) {
   py::class_<via_stop>(m, "ViaStop")
       .def(py::init<>())
       .def_readwrite("location", &via_stop::location_)
-      .def_readwrite("stay", &via_stop::stay_)
+      .def_property("stay",
+          [](via_stop const& vs) { return py::int_(vs.stay_.count()); },
+          [](via_stop& vs, int minutes) { vs.stay_ = duration_t{minutes}; })
       .def(py::self == py::self)
       .def("__repr__", [](via_stop const& vs) {
         return "ViaStop(location=" + std::to_string(vs.location_.v_) +
@@ -88,40 +92,32 @@ void init_routing(py::module_& m) {
   py::class_<query>(m, "Query")
       .def(py::init<>())
       
-      // Start time (variant: single time or interval)
+      // Start time - expose as int (minutes) or tuple of ints (interval)
       .def_property("start_time",
         [](query const& q) -> py::object {
           if (std::holds_alternative<unixtime_t>(q.start_time_)) {
             auto ut = std::get<unixtime_t>(q.start_time_);
-            // Convert to system_clock::time_point for pybind11's chrono support
-            auto tp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(ut);
-            return py::cast(tp);
+            return py::int_(ut.time_since_epoch().count());
           } else {
-            return py::cast(std::get<interval<unixtime_t>>(q.start_time_));
+            auto const& iv = std::get<interval<unixtime_t>>(q.start_time_);
+            return py::make_tuple(
+              iv.from_.time_since_epoch().count(),
+              iv.to_.time_since_epoch().count()
+            );
           }
         },
         [](query& q, py::handle obj) {
-          try {
-            // Try to cast as interval first
-            auto iv = obj.cast<interval<unixtime_t>>();
-            q.start_time_ = iv;
-            return;
-          } catch (...) {
-            // Not an interval, continue
+          if (py::isinstance<py::tuple>(obj)) {
+            auto t = obj.cast<py::tuple>();
+            q.start_time_ = interval<unixtime_t>{
+              unixtime_t{i32_minutes{t[0].cast<int>()}},
+              unixtime_t{i32_minutes{t[1].cast<int>()}}
+            };
+          } else {
+            q.start_time_ = unixtime_t{
+              i32_minutes{obj.cast<int>()}
+            };
           }
-          
-          try {
-            // Try datetime/time_point conversion
-            auto tp = obj.cast<std::chrono::system_clock::time_point>();
-            q.start_time_ = std::chrono::time_point_cast<i32_minutes>(tp);
-            return;
-          } catch (...) {
-            // Not a datetime, continue
-          }
-          
-          // Fall back to int (minutes since epoch)
-          auto minutes = obj.cast<std::int64_t>();
-          q.start_time_ = unixtime_t{i32_minutes{static_cast<std::int32_t>(minutes)}};
         })
       
       .def_readwrite("start_match_mode", &query::start_match_mode_)
@@ -131,7 +127,9 @@ void init_routing(py::module_& m) {
       .def_readwrite("destination", &query::destination_)
       .def_readwrite("max_start_offset", &query::max_start_offset_)
       .def_readwrite("max_transfers", &query::max_transfers_)
-      .def_readwrite("max_travel_time", &query::max_travel_time_)
+      .def_property("max_travel_time",
+          [](query const& q) { return py::int_(q.max_travel_time_.count()); },
+          [](query& q, int minutes) { q.max_travel_time_ = duration_t{minutes}; })
       .def_readwrite("min_connection_count", &query::min_connection_count_)
       .def_readwrite("extend_interval_earlier", &query::extend_interval_earlier_)
       .def_readwrite("extend_interval_later", &query::extend_interval_later_)
@@ -156,8 +154,15 @@ void init_routing(py::module_& m) {
   py::class_<journey::leg>(m, "Leg")
       .def_readonly("from", &journey::leg::from_)
       .def_readonly("to", &journey::leg::to_)
-      .def_readonly("dep_time", &journey::leg::dep_time_)
-      .def_readonly("arr_time", &journey::leg::arr_time_)
+      // Expose times as integers (minutes since epoch)
+      .def_property_readonly("dep_time",
+        [](journey::leg const& l) {
+          return l.dep_time_.time_since_epoch().count();
+        })
+      .def_property_readonly("arr_time",
+        [](journey::leg const& l) {
+          return l.arr_time_.time_since_epoch().count();
+        })
       .def(py::self == py::self)
       .def(py::self < py::self)
       .def("__repr__", [](journey::leg const& leg) {
@@ -171,13 +176,27 @@ void init_routing(py::module_& m) {
   py::class_<journey>(m, "Journey")
       .def(py::init<>())
       .def_readonly("legs", &journey::legs_)
-      .def_readonly("start_time", &journey::start_time_)
-      .def_readonly("dest_time", &journey::dest_time_)
+      // Expose times as integers (minutes since epoch)
+      .def_property_readonly("start_time",
+        [](journey const& j) {
+          return j.start_time_.time_since_epoch().count();
+        })
+      .def_property_readonly("dest_time",
+        [](journey const& j) {
+          return j.dest_time_.time_since_epoch().count();
+        })
       .def_readonly("transfers", &journey::transfers_)
       
-      .def("travel_time", &journey::travel_time)
-      .def("departure_time", &journey::departure_time)
-      .def("arrival_time", &journey::arrival_time)
+      // Return travel_time as int (minutes)
+      .def("travel_time", [](journey const& j) {
+        return j.travel_time().count();
+      })
+      .def("departure_time", [](journey const& j) {
+        return j.departure_time().time_since_epoch().count();
+      })
+      .def("arrival_time", [](journey const& j) {
+        return j.arrival_time().time_since_epoch().count();
+      })
       .def("dominates", &journey::dominates)
       
       .def(py::self == py::self)

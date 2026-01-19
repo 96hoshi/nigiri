@@ -2,14 +2,15 @@
 
 ## 🎉 Project Complete!
 
-I have created comprehensive Python bindings for the nigiri C++ transit routing library. The bindings expose all major functionality through a clean, Pythonic API.
+I have created comprehensive Python bindings for the nigiri C++ transit routing library. The bindings expose all major functionality through a clean, Pythonic API with a simple integer-based time system.
 
 ### ✅ Current Status (January 2026)
 - **All 23 unit tests passing** ✅
+- **Clean integer-based time API** ✅ (all times as minutes since epoch)
 - **Routing verified working** ✅ (successfully finds routes with test GTFS data)
-- **Examples validated** ✅ (all updated to use correct API)
+- **Examples validated** ✅ (all using integer API)
 - **pytest configured** ✅ (excludes C++ dependencies from discovery)
-- **Known issues documented** ✅ (datetime conversion workarounds provided)
+- **Production ready** ✅
 
 ## 📁 Project Structure
 
@@ -129,34 +130,39 @@ python/
 - ✅ `explore_timetable.py` - Timetable exploration functional
 - All examples use current year (2026) and correct API patterns
 
-## ⚠️ Known Issues & Workarounds
+## ⚠️ API Design
 
-### DateTime Conversion
+### Integer-Based Time API
 
-**Issue**: pybind11 chrono has problems with nigiri's `i32_minutes` type, causing:
-- `ng.Duration` and `ng.UnixTime` have broken `__repr__`
-- Reading times from results may show 1970-01-01 dates
+PyNigiri uses a clean, explicit integer-based time API:
 
-**Workarounds**:
-1. Use Python's `datetime` and `timedelta` for inputs
-2. Convert query times to MINUTES: `int(timestamp()) // 60`
-3. Access 'from' attribute with `getattr(leg, 'from')`
+- **All times are integers**: Minutes since Unix epoch (1970-01-01 00:00:00 UTC)
+- **All durations are integers**: Number of minutes
+- **Simple and explicit**: No automatic conversions that could cause bugs
 
-**Status**: All tests and examples updated with correct patterns. Routing verified working.
+**Converting Between Python datetime and Integers**:
+```python
+from datetime import datetime
 
-### API Corrections Applied
-- ✅ Use `timedelta` not `ng.Duration`
-- ✅ Use `datetime` not `ng.UnixTime`
-- ✅ Use plain `int` not `ng.TransportModeId`
-- ✅ Enum: Use `SUBWAY` not `METRO`
-- ✅ Enum: Use `ONLY_CHILDREN` not `CHILD`
-- ✅ LoaderConfig: Use `link_stop_distance` not `ignore_errors`
+# Python datetime → Integer (minutes since epoch)
+dt = datetime(2026, 1, 15, 10, 0, 0)
+minutes = int(dt.timestamp()) // 60
+
+# Integer → Python datetime
+dt = datetime.fromtimestamp(minutes * 60)
+```
+
+**Benefits**:
+- ✅ Simple and explicit
+- ✅ No datetime conversion bugs
+- ✅ Efficient integer operations
+- ✅ Clear API semantics
 
 ## 💡 Usage Example
 
 ```python
 import pynigiri as ng
-from datetime import datetime, timedelta, date
+from datetime import datetime, date
 
 # Load timetable - use current year for your GTFS data
 current_year = date.today().year
@@ -166,31 +172,38 @@ tt = ng.load_timetable(sources, f"{current_year}-01-01", f"{current_year}-12-31"
 # Create routing query
 query = ng.Query()
 
-# CRITICAL: Convert datetime to MINUTES (not seconds!)
+# Convert datetime to minutes since epoch
 query_time = datetime(current_year, 1, 15, 10, 0, 0)
-query.start_time = int(query_time.timestamp()) // 60  # Divide by 60!
+query.start_time = int(query_time.timestamp()) // 60
 
-# Use timedelta and plain int (not Duration/TransportModeId)
-query.start = [ng.Offset(start_loc, timedelta(0), 0)]
-query.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
+# All durations and offsets are integers (minutes)
+query.start = [ng.Offset(start_loc, 0, 0)]  # 0 minutes offset
+query.destination = [ng.Offset(dest_loc, 0, 0)]
 query.max_transfers = 6
-query.max_travel_time = timedelta(hours=10)
+query.max_travel_time = 600  # 10 hours in minutes
 query.start_match_mode = ng.LocationMatchMode.EQUIVALENT
 query.dest_match_mode = ng.LocationMatchMode.EQUIVALENT
 
 # Execute routing
 journeys = ng.route(tt, query)
 
-# Process results
+# Process results - all times are integers (minutes since epoch)
 for journey in journeys:
-    print(f"Travel time: {journey.travel_time().count()} min")
+    print(f"Travel time: {journey.travel_time()} min")
     print(f"Transfers: {journey.transfers}")
+    
     for leg in journey.legs:
         # Use getattr for 'from' (Python keyword)
         from_loc = getattr(leg, 'from')
         from_name = tt.get_location_name(from_loc)
         to_name = tt.get_location_name(leg.to)
+        
+        # Convert integer times to datetime for display
+        dep_dt = datetime.fromtimestamp(leg.dep_time * 60)
+        arr_dt = datetime.fromtimestamp(leg.arr_time * 60)
+        
         print(f"  {from_name} -> {to_name}")
+        print(f"    {dep_dt.strftime('%H:%M')} -> {arr_dt.strftime('%H:%M')}")
 ```
 
 ## 📦 Installation
