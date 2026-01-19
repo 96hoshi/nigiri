@@ -64,6 +64,15 @@ for journey in journeys:
         # Convert minute timestamps to datetime for display
         dep_dt = datetime.fromtimestamp(leg.dep_time * 60)
         arr_dt = datetime.fromtimestamp(leg.arr_time * 60)
+        
+        print(f"  {from_name} → {to_name}")
+        print(f"    {dep_dt.strftime('%H:%M')} → {arr_dt.strftime('%H:%M')}")
+```
+
+## Advanced Features
+
+### Via Stops
+```python
 via = ng.ViaStop()
 via.location = intermediate_loc
 via.stay = 10  # 10 minutes minimum stay
@@ -78,19 +87,6 @@ from datetime import datetime
 start_minutes = int(datetime.now().timestamp()) // 60
 end_minutes = start_minutes + 120  # 2 hours later
 query.start_time = (start_minutes, end_minutes)
-```s=10)  # 10 min minimum stay
-query.via_stops = [via]
-```
-
-### Time Interval
-```python
-from datetime import datetime, timedelta
-
-# For time intervals, still use integers (minutes)
-start_time = datetime.now()
-end_time = start_time + timedelta(hours=2)
-query.start_time = int(start_time.timestamp()) // 60
-# Note: TimeInterval support may have limitations
 ```
 
 ### Transport Filters
@@ -133,20 +129,15 @@ journeys = ng.route_with_rt(tt, rt_tt, query)
 | `int` | Duration (minutes) | `duration = 30` |
 | `int` | Timestamp (minutes since epoch) | `time = int(dt.timestamp()) // 60` |
 | `LatLng(lat, lng)` | Coordinates | `ng.LatLng(52.52, 13.40)` |
-| `Offset(loc, dur, mode)` | Start/dest point | `ng.Offset(loc, 0
-| `Offset(loc, dur, mode)` | Start/dest point | `ng.Offset(loc, timedelta(0), 0)` |
+| `Offset(loc, dur, mode)` | Start/dest point | `ng.Offset(loc, 0, 0)` |
 
 ## Enums
 
 ### Transport Classes (Clasz)
 `AIR`, `COACH`, `HIGHSPEED`, `LONG_DISTANCE`, `NIGHT`, `REGIONAL`, `REGIONAL_FAST`, `SUBWAY`, `TRAM`, `BUS`, `SHIP`, `OTHER`
 
-⚠️ **Note:** Use `SUBWAY` (not `METRO`)
-
 ### Location Types
 `TRACK`, `STATION`, `GENERATED_TRACK`
-
-⚠️ **Note:** Only these three are exposed
 
 ### Event Types
 `DEP`, `ARR`
@@ -155,9 +146,10 @@ journeys = ng.route_with_rt(tt, rt_tt, query)
 `FORWARD`, `BACKWARD`
 
 ### Location Match Modes
-`EXACT`, `EQUIVALENT`, `ONLY_CHILDREN`, `ON_TRIP`
-
-⚠️ **Note:** Use `ONLY_CHILDREN` (not `CHILD`)
+- `EXACT`: Match only the exact platform/stop
+- `EQUIVALENT`: Match all equivalent stops (recommended)
+- `ONLY_CHILDREN`: Match all child stops
+- `ON_TRIP`: Match any stop on the trip
 
 ## Timetable Methods
 

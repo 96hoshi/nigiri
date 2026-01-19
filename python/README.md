@@ -21,7 +21,7 @@ Complete Python bindings for the [nigiri](https://github.com/motis-project/nigir
 The bindings are built as part of the main nigiri build system:
 
 ```bash
-cd /home/p4b/pyNigiri/nigiri
+cd nigiri
 cmake -B build -DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON
 cmake --build build --target pynigiri -j8
 ```
@@ -84,12 +84,13 @@ for journey in journeys:
 
 ### Enums
 - `Clasz`: Transport class (REGIONAL, LONG_DISTANCE, SUBWAY, TRAM, BUS, etc.)
-  - ⚠️ Use `SUBWAY` (not `METRO`)
 - `LocationType`: Location types (STATION, TRACK, GENERATED_TRACK)
 - `EventType`: Event types (DEP, ARR)
 - `Direction`: Search direction (FORWARD, BACKWARD)
-- `LocationMatchMode`: Location matching (EXACT, EQUIVALENT, ONLY_CHILDREN)
-  - ⚠️ Use `ONLY_CHILDREN` (not `CHILD`)
+- `LocationMatchMode`: Location matching modes for routing
+  - `EXACT`: Match only the exact platform/stop specified
+  - `EQUIVALENT`: Match all equivalent stops at a station (recommended for most routing)
+  - `ONLY_CHILDREN`: Match all child stops of a parent station
 
 ### Core Types
 - `Timetable`: Main timetable data structure
@@ -108,7 +109,9 @@ for journey in journeys:
 ## Testing
 
 Run the test suite to verify the bindings work correctly:
-nigiri/python
+
+```bash
+cd nigiri/python
 pytest tests/
 ```
 
@@ -117,22 +120,21 @@ Expected output:
 ======================== 23 passed ========================
 ```
 
-All tests should pass. The test suite covers:
-All tests should pass without any warnings or issues.ng and queries
-- Routing query setup and execution
-- Real-time updates
+All tests should pass without any warnings or issues.
 
-⚠️ **Note**: Tests use correct API patterns (timedelta/datetime, not Duration/UnixTime)
-ALL TESTS PASSED!
-```
+## Installation via pip
 
-## Installation via pip (TODO)
-
-Future work: Package as a proper Python wheel for easy installation:
+Install the package using pip:
 
 ```bash
 cd python
 pip install .
+```
+
+For development (editable install):
+
+```bash
+pip install -e .
 ```
 
 ## Implementation Notes
