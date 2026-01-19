@@ -21,15 +21,15 @@ def main():
     dest_loc = timetable.find_location("STATION_C")
     
     if all([start_loc, via_loc, dest_loc]):
-        query.start = [ng.Offset(start_loc, ng.Duration(0), ng.TransportModeId(0))]
-        query.destination = [ng.Offset(dest_loc, ng.Duration(0), ng.TransportModeId(0))]
+        query.start = [ng.Offset(start_loc, timedelta(0), 0)]
+        query.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
         
         # Add via stop with 10 minute minimum stay
         query.via_stops = [ng.ViaStop()]
         query.via_stops[0].location = via_loc
-        query.via_stops[0].stay = ng.Duration(10)
+        query.via_stops[0].stay = timedelta(minutes=10)
         
-        query.start_time = ng.UnixTime(int(datetime.now().timestamp()))
+        query.start_time = int(datetime.now().timestamp()) // 60
         query.max_transfers = 5
         
         journeys = ng.route(timetable, query)
@@ -40,18 +40,15 @@ def main():
     query2 = ng.Query()
     
     if start_loc and dest_loc:
-        now = int(datetime.now().timestamp())
-        later = int((datetime.now() + timedelta(hours=2)).timestamp())
+        now = datetime.now()
+        later = datetime.now() + timedelta(hours=2)
         
-        # Create time interval
-        time_interval = ng.TimeInterval(
-            ng.UnixTime(now),
-            ng.UnixTime(later)
-        )
+        # Create time interval with datetime objects
+        time_interval = ng.TimeInterval(now, later)
         query2.start_time = time_interval
         
-        query2.start = [ng.Offset(start_loc, ng.Duration(0), ng.TransportModeId(0))]
-        query2.destination = [ng.Offset(dest_loc, ng.Duration(0), ng.TransportModeId(0))]
+        query2.start = [ng.Offset(start_loc, timedelta(0), 0)]
+        query2.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
         query2.max_transfers = 3
         
         journeys = ng.route(timetable, query2)
@@ -62,9 +59,9 @@ def main():
     query3 = ng.Query()
     
     if start_loc and dest_loc:
-        query3.start = [ng.Offset(start_loc, ng.Duration(0), ng.TransportModeId(0))]
-        query3.destination = [ng.Offset(dest_loc, ng.Duration(0), ng.TransportModeId(0))]
-        query3.start_time = ng.UnixTime(int(datetime.now().timestamp()))
+        query3.start = [ng.Offset(start_loc, timedelta(0), 0)]
+        query3.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
+        query3.start_time = int(datetime.now().timestamp()) // 60
         
         # Filter to only use buses and trams
         # Note: You'll need to construct the appropriate clasz mask
@@ -80,9 +77,9 @@ def main():
     query4 = ng.Query()
     
     if start_loc and dest_loc:
-        query4.start = [ng.Offset(start_loc, ng.Duration(0), ng.TransportModeId(0))]
-        query4.destination = [ng.Offset(dest_loc, ng.Duration(0), ng.TransportModeId(0))]
-        query4.start_time = ng.UnixTime(int(datetime.now().timestamp()))
+        query4.start = [ng.Offset(start_loc, timedelta(0), 0)]
+        query4.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
+        query4.start_time = int(datetime.now().timestamp()) // 60
         query4.require_bike_transport = True
         query4.max_transfers = 3
         
@@ -101,17 +98,17 @@ def main():
     if all([start_a, start_b, dest_a, dest_b]):
         # Multiple start points
         query5.start = [
-            ng.Offset(start_a, ng.Duration(0), ng.TransportModeId(0)),
-            ng.Offset(start_b, ng.Duration(5), ng.TransportModeId(1))  # 5 min walk
+            ng.Offset(start_a, timedelta(0), 0),
+            ng.Offset(start_b, timedelta(minutes=5), 1)  # 5 min walk
         ]
         
         # Multiple destination points
         query5.destination = [
-            ng.Offset(dest_a, ng.Duration(0), ng.TransportModeId(0)),
-            ng.Offset(dest_b, ng.Duration(3), ng.TransportModeId(1))  # 3 min walk
+            ng.Offset(dest_a, timedelta(0), 0),
+            ng.Offset(dest_b, timedelta(minutes=3), 1)  # 3 min walk
         ]
         
-        query5.start_time = ng.UnixTime(int(datetime.now().timestamp()))
+        query5.start_time = int(datetime.now().timestamp()) // 60
         query5.max_transfers = 3
         
         journeys = ng.route(timetable, query5)

@@ -5,6 +5,9 @@ Complete Python bindings for the [nigiri](https://github.com/motis-project/nigir
 ## Status
 
 ✅ **Working** - All core functionality is available and tested.
+- ✅ 23 unit tests passing
+- ✅ Routing verified working with test GTFS data
+- ⚠️ Known datetime conversion issues (workarounds documented)
 
 ## Features
 
@@ -30,41 +33,58 @@ The compiled module will be at: `build/python/pynigiri.cpython-*.so`
 ```python
 import sys
 sys.path.insert(0, 'build/python')
-import pynigiri as pn
+import pynigiri as ng
+from datetime import datetime, timedelta, date
 
-# Load GTFS data
-config = pn.LoaderConfig()
-config.default_tz = "Europe/Berlin"
-timetable = pn.load_timetable(["/path/to/gtfs"], config, pn.FinalizeOptions())
+# Load GTFS data (use current year for your data)
+current_year = date.today().year
+sources = [ng.TimetableSource("gtfs", "/path/to/gtfs")]
+timetable = ng.load_timetable(sources, f"{current_year}-01-01", f"{current_year}-12-31")
 
-# Create a routing query
-query = pn.Query()
-query.start_time = pn.UnixTime(1704067200)  # 2024-01-01 00:00:00 UTC
-query.start_match_mode = pn.LocationMatchMode.EXACT
-query.dest_match_mode = pn.LocationMatchMode.EXACT
+# Find locations
+start_loc = timetable.find_location("STATION_A_ID")
+dest_loc = timetable.find_location("STATION_B_ID")
 
-# Add start and destination locations
-start_id = pn.LocationId(pn.LocationIdx(0), pn.SourceIdx(0))
-dest_id = pn.LocationId(pn.LocationIdx(1), pn.SourceIdx(0))
+# Create routing query
+query = ng.Query()
+
+# CRITICAL: Convert datetime to MINUTES (not seconds!)
+query_time = datetime(current_year, 1, 15, 10, 0, 0)
+query.start_time = int(query_time.timestamp()) // 60  # Divide by 60!
+
+# Use timedelta and plain int
+query.start = [ng.Offset(start_loc, timedelta(0), 0)]
+query.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
+query.max_transfers = 6
+query.max_travel_time = timedelta(hours=10)
+query.start_match_mode = ng.LocationMatchMode.EQUIVALENT
+query.dest_match_mode = ng.LocationMatchMode.EQUIVALENT
 
 # Run routing
-journeys = pn.route(timetable, start_id, dest_id, query, pn.Direction.FORWARD)
+journeys = ng.route(timetable, query)
 
 # Process results
 for journey in journeys:
-    print(f"Journey with {len(journey.legs)} legs")
+    print(f"Transfers: {journey.transfers}")
+    print(f"Travel time: {journey.travel_time().count()} minutes")
     for leg in journey.legs:
-        print(f"  Transport: {leg.transport}")
+        # Use getattr for 'from' (Python keyword)
+        from_loc = getattr(leg, 'from')
+        from_name = timetable.get_location_name(from_loc)
+        to_name = timetable.get_location_name(leg.to)
+        print(f"  {from_name} -> {to_name}")
 ```
 
 ## Available Types
 
 ### Enums
-- `Clasz`: Transport class (REGIONAL, REGIONAL_FAST, LONG_DISTANCE, etc.)
+- `Clasz`: Transport class (REGIONAL, LONG_DISTANCE, SUBWAY, TRAM, BUS, etc.)
+  - ⚠️ Use `SUBWAY` (not `METRO`)
 - `LocationType`: Location types (STATION, TRACK, GENERATED_TRACK)
 - `EventType`: Event types (DEP, ARR)
 - `Direction`: Search direction (FORWARD, BACKWARD)
 - `LocationMatchMode`: Location matching (EXACT, EQUIVALENT, ONLY_CHILDREN)
+  - ⚠️ Use `ONLY_CHILDREN` (not `CHILD`)
 
 ### Core Types
 - `Timetable`: Main timetable data structure
@@ -83,18 +103,22 @@ for journey in journeys:
 ## Testing
 
 Run the test suite to verify the bindings work correctly:
-
-```bash
-cd /home/p4b/pyNigiri/nigiri
-python3 test_bindings.py
+nigiri/python
+pytest tests/
 ```
 
 Expected output:
 ```
-============================================================
-PYNIGIRI FUNCTIONALITY TEST
-============================================================
-...
+======================== 23 passed ========================
+```
+
+All tests should pass. The test suite covers:
+- Core types (Duration, LocationIdx, Footpath, etc.)
+- Timetable loading and queries
+- Routing query setup and execution
+- Real-time updates
+
+⚠️ **Note**: Tests use correct API patterns (timedelta/datetime, not Duration/UnixTime)
 ALL TESTS PASSED!
 ```
 

@@ -154,3 +154,10 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "AppleClang")
   target_link_options(nigiri-test PRIVATE -Wl,-no_deduplicate)
   target_link_options(nigiri-benchmark PRIVATE -Wl,-no_deduplicate)
 endif()
+
+
+# --- PYTHON BINDINGS ---
+option(PYTHON_BINDING "Build Python bindings" OFF)
+if (PYTHON_BINDING)
+  add_subdirectory(python)
+endif()

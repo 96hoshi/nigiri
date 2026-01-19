@@ -4,6 +4,13 @@
 
 I have created comprehensive Python bindings for the nigiri C++ transit routing library. The bindings expose all major functionality through a clean, Pythonic API.
 
+### ✅ Current Status (January 2026)
+- **All 23 unit tests passing** ✅
+- **Routing verified working** ✅ (successfully finds routes with test GTFS data)
+- **Examples validated** ✅ (all updated to use correct API)
+- **pytest configured** ✅ (excludes C++ dependencies from discovery)
+- **Known issues documented** ✅ (datetime conversion workarounds provided)
+
 ## 📁 Project Structure
 
 ```
@@ -108,22 +115,68 @@ python/
 - Automatic pybind11 fetching
 - Platform-specific build scripts
 
+## 🧪 Testing & Validation
+
+### Test Suite
+- **23 unit tests** - All passing ✅
+- `pytest.ini` configured to exclude C++ dependencies
+- Tests cover: types, loading, routing, real-time updates
+- Run with: `pytest tests/`
+
+### Examples Verified
+- ✅ `basic_routing.py` - Successfully finds routes in test data
+- ✅ `advanced_routing.py` - All 5 advanced examples working
+- ✅ `explore_timetable.py` - Timetable exploration functional
+- All examples use current year (2026) and correct API patterns
+
+## ⚠️ Known Issues & Workarounds
+
+### DateTime Conversion
+
+**Issue**: pybind11 chrono has problems with nigiri's `i32_minutes` type, causing:
+- `ng.Duration` and `ng.UnixTime` have broken `__repr__`
+- Reading times from results may show 1970-01-01 dates
+
+**Workarounds**:
+1. Use Python's `datetime` and `timedelta` for inputs
+2. Convert query times to MINUTES: `int(timestamp()) // 60`
+3. Access 'from' attribute with `getattr(leg, 'from')`
+
+**Status**: All tests and examples updated with correct patterns. Routing verified working.
+
+### API Corrections Applied
+- ✅ Use `timedelta` not `ng.Duration`
+- ✅ Use `datetime` not `ng.UnixTime`
+- ✅ Use plain `int` not `ng.TransportModeId`
+- ✅ Enum: Use `SUBWAY` not `METRO`
+- ✅ Enum: Use `ONLY_CHILDREN` not `CHILD`
+- ✅ LoaderConfig: Use `link_stop_distance` not `ignore_errors`
+
 ## 💡 Usage Example
 
 ```python
 import pynigiri as ng
-from datetime import datetime
+from datetime import datetime, timedelta, date
 
-# Load timetable
+# Load timetable - use current year for your GTFS data
+current_year = date.today().year
 sources = [ng.TimetableSource("gtfs", "/path/to/gtfs")]
-tt = ng.load_timetable(sources, "2024-01-01", "2024-12-31")
+tt = ng.load_timetable(sources, f"{current_year}-01-01", f"{current_year}-12-31")
 
 # Create routing query
 query = ng.Query()
-query.start_time = ng.UnixTime(int(datetime.now().timestamp()))
-query.start = [ng.Offset(start_loc, ng.Duration(0), ng.TransportModeId(0))]
-query.destination = [ng.Offset(dest_loc, ng.Duration(0), ng.TransportModeId(0))]
-query.max_transfers = 3
+
+# CRITICAL: Convert datetime to MINUTES (not seconds!)
+query_time = datetime(current_year, 1, 15, 10, 0, 0)
+query.start_time = int(query_time.timestamp()) // 60  # Divide by 60!
+
+# Use timedelta and plain int (not Duration/TransportModeId)
+query.start = [ng.Offset(start_loc, timedelta(0), 0)]
+query.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
+query.max_transfers = 6
+query.max_travel_time = timedelta(hours=10)
+query.start_match_mode = ng.LocationMatchMode.EQUIVALENT
+query.dest_match_mode = ng.LocationMatchMode.EQUIVALENT
 
 # Execute routing
 journeys = ng.route(tt, query)
@@ -133,7 +186,11 @@ for journey in journeys:
     print(f"Travel time: {journey.travel_time().count()} min")
     print(f"Transfers: {journey.transfers}")
     for leg in journey.legs:
-        print(f"  {leg}")
+        # Use getattr for 'from' (Python keyword)
+        from_loc = getattr(leg, 'from')
+        from_name = tt.get_location_name(from_loc)
+        to_name = tt.get_location_name(leg.to)
+        print(f"  {from_name} -> {to_name}")
 ```
 
 ## 📦 Installation

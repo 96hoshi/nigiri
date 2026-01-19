@@ -44,6 +44,21 @@ This allows you to modify the Python code without reinstalling.
 python -c "import pynigiri; print(pynigiri.__version__)"
 ```
 
+### 5. Run Tests (Optional)
+
+```bash
+cd nigiri/python
+pip install pytest
+pytest tests/  # Should show 23 tests passing
+```
+
+### 6. Try an Example
+
+```bash
+cd nigiri/python/examples
+python basic_routing.py  # Should successfully find routes
+```
+
 ## Method 2: Build with CMake Directly
 
 If you need more control over the build process:

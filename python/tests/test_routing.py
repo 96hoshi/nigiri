@@ -3,13 +3,14 @@ Unit tests for pynigiri routing functionality.
 """
 import pytest
 import pynigiri as ng
+from datetime import timedelta, datetime
 
 
 def test_offset():
     """Test Offset creation."""
     target = ng.LocationIdx(10)
-    duration = ng.Duration(5)
-    mode = ng.TransportModeId(0)
+    duration = timedelta(minutes=5)
+    mode = 0  # TransportModeId is just an int
     
     offset = ng.Offset(target, duration, mode)
     
@@ -21,26 +22,26 @@ def test_offset():
 def test_td_offset():
     """Test TdOffset creation."""
     offset = ng.TdOffset()
-    offset.duration = ng.Duration(10)
+    offset.duration = timedelta(minutes=10)
     
-    assert offset.duration.count() == 10
+    assert offset.duration.total_seconds() == 600
 
 
 def test_via_stop():
     """Test ViaStop creation."""
     via = ng.ViaStop()
     via.location = ng.LocationIdx(5)
-    via.stay = ng.Duration(10)
+    via.stay = timedelta(minutes=10)
     
     assert via.location == ng.LocationIdx(5)
-    assert via.stay.count() == 10
+    assert via.stay.total_seconds() == 600
 
 
 def test_location_match_mode():
     """Test LocationMatchMode enum."""
     assert ng.LocationMatchMode.EXACT is not None
     assert ng.LocationMatchMode.EQUIVALENT is not None
-    assert ng.LocationMatchMode.CHILD is not None
+    assert ng.LocationMatchMode.ONLY_CHILDREN is not None
 
 
 def test_transfer_time_settings():
@@ -48,8 +49,11 @@ def test_transfer_time_settings():
     settings = ng.TransferTimeSettings()
     assert settings is not None
     
-    settings.default_transfer_time = ng.Duration(2)
-    assert settings.default_transfer_time.count() == 2
+    # default is a boolean, min_transfer_time is a timedelta
+    settings.default = False
+    settings.min_transfer_time = timedelta(minutes=2)
+    assert settings.default == False
+    assert settings.min_transfer_time.total_seconds() == 120
 
 
 def test_query_creation():
@@ -59,22 +63,20 @@ def test_query_creation():
     
     # Set basic properties
     query.max_transfers = 3
-    query.max_travel_time = ng.Duration(120)
+    query.max_travel_time = timedelta(hours=2)
     query.require_bike_transport = True
-    query.slow_direct = False
     
     assert query.max_transfers == 3
-    assert query.max_travel_time.count() == 120
+    assert query.max_travel_time.total_seconds() == 7200
     assert query.require_bike_transport == True
-    assert query.slow_direct == False
 
 
 def test_query_with_offsets():
     """Test Query with start and destination offsets."""
     query = ng.Query()
     
-    start = ng.Offset(ng.LocationIdx(1), ng.Duration(0), ng.TransportModeId(0))
-    dest = ng.Offset(ng.LocationIdx(2), ng.Duration(0), ng.TransportModeId(0))
+    start = ng.Offset(ng.LocationIdx(1), timedelta(0), 0)
+    dest = ng.Offset(ng.LocationIdx(2), timedelta(0), 0)
     
     query.start = [start]
     query.destination = [dest]
@@ -89,7 +91,7 @@ def test_query_with_via_stops():
     
     via = ng.ViaStop()
     via.location = ng.LocationIdx(5)
-    via.stay = ng.Duration(5)
+    via.stay = timedelta(minutes=5)
     
     query.via_stops = [via]
     

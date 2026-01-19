@@ -2,6 +2,40 @@
 
 Complete API reference for the PyNigiri Python bindings.
 
+## ⚠️ Known Issues & Best Practices
+
+### DateTime Handling
+
+The pybind11 chrono bindings have issues with nigiri's custom time types (`i32_minutes`). Follow these guidelines:
+
+1. **For input:** Use Python's `datetime.datetime` and `datetime.timedelta`
+2. **For query.start_time:** Convert to MINUTES not seconds: `int(dt.timestamp()) // 60`
+3. **Avoid:** `ng.Duration()` and `ng.UnixTime()` - they have repr/conversion issues
+4. **Reading times:** Times from journey results may show as 1970-01-01 dates due to conversion bugs
+
+### Working Example
+
+```python
+from datetime import datetime, timedelta
+import pynigiri as ng
+
+# Load timetable (use current year for your GTFS data)
+sources = [ng.TimetableSource("gtfs", "/path/to/gtfs")]
+tt = ng.load_timetable(sources, "2026-01-01", "2026-12-31")
+
+# Setup query with correct time conversion
+query = ng.Query()
+query_time = datetime(2026, 1, 15, 10, 0, 0)
+query.start_time = int(query_time.timestamp()) // 60  # Minutes!
+query.start = [ng.Offset(start_loc, timedelta(0), 0)]
+query.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
+query.max_transfers = 6
+query.max_travel_time = timedelta(hours=10)
+
+# Execute
+journeys = ng.route(tt, query)
+```
+
 ## Table of Contents
 
 - [Core Types](#core-types)
@@ -36,43 +70,49 @@ print(int(idx))  # 42
 
 ### Duration
 
-Represents a time duration in minutes.
+⚠️ **DEPRECATED - Do not use directly**
+
+Represents a time duration in minutes. Due to pybind11 chrono conversion issues, this type has broken `__repr__` behavior.
+
+**Recommendation:** Use Python's `datetime.timedelta` instead for all duration inputs.
 
 ```python
-Duration(minutes: int)
+from datetime import timedelta
+
+# Use this:
+duration = timedelta(minutes=30)
+
+# NOT this:
+# d = ng.Duration(30)  # Has repr issues
 ```
 
-**Methods:**
-
-- `count() -> int`: Get duration in minutes
-- `__int__() -> int`: Convert to integer
-
-**Example:**
-
+**When reading durations from results:**
 ```python
-d = ng.Duration(30)
-print(d.count())  # 30
+travel_time = journey.travel_time()
+minutes = travel_time.count()  # This works
+print(minutes)  # Prints: 30
 ```
 
 ### UnixTime
 
-Represents a Unix timestamp.
+⚠️ **DEPRECATED - Do not use directly**
 
-```python
-UnixTime(seconds: int)
-```
+Represents a Unix timestamp. Due to pybind11 chrono conversion issues, this type cannot properly convert back to Python datetime objects and will show 1970-01-01 dates.
 
-**Methods:**
-
-- `count() -> int`: Get timestamp in seconds
-- `__int__() -> int`: Convert to integer
-
-**Example:**
+**Recommendation:** Use Python's `datetime.datetime` and integer timestamps instead.
 
 ```python
 from datetime import datetime
-t = ng.UnixTime(int(datetime.now().timestamp()))
+
+# For setting query times, convert datetime to MINUTES (not seconds):
+query_time = datetime(2026, 1, 15, 10, 0, 0)
+query.start_time = int(query_time.timestamp()) // 60  # Divide by 60!
+
+# NOT this:
+# query.start_time = ng.UnixTime(...)  # Will cause conversion issues
 ```
+
+**⚠️ CRITICAL:** The nigiri C++ library uses minute-based time internally. When setting `query.start_time` with an integer, you MUST convert seconds to minutes by dividing by 60.
 
 ### LatLng
 
@@ -143,12 +183,16 @@ TimeInterval(from_: UnixTime, to_: UnixTime)
 Transport class/type:
 
 - `AIR`, `COACH`, `HIGHSPEED`, `LONG_DISTANCE`, `NIGHT`
-- `REGIONAL`, `REGIONAL_FAST`, `METRO`, `SUBWAY`
+- `REGIONAL`, `REGIONAL_FAST`, `SUBWAY`
 - `TRAM`, `BUS`, `SHIP`, `OTHER`
+
+⚠️ **Note:** Use `SUBWAY` (not `METRO`). The enum value `METRO` does not exist.
 
 #### LocationType
 
-- `STOP`, `STATION`, `ENTRANCE`, `GENERALIZED_NODE`, `BOARDING_AREA`
+- `TRACK`, `STATION`, `GENERATED_TRACK`
+
+⚠️ **Note:** Only these three values are currently exposed in the bindings.
 
 #### EventType
 
@@ -367,11 +411,23 @@ Query()
 **Example:**
 
 ```python
+from datetime import datetime, timedelta
+
 query = ng.Query()
-query.start_time = ng.UnixTime(int(datetime.now().timestamp()))
-query.start = [ng.Offset(start_loc, ng.Duration(0), ng.TransportModeId(0))]
-query.destination = [ng.Offset(dest_loc, ng.Duration(0), ng.TransportModeId(0))]
+
+# Convert datetime to MINUTES (not seconds!) - critical!
+query_time = datetime(2026, 1, 15, 10, 0, 0)
+query.start_time = int(query_time.timestamp()) // 60  # Divide by 60!
+
+# Use timedelta and plain int (not Duration/TransportModeId)
+query.start = [ng.Offset(start_loc, timedelta(0), 0)]
+query.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
 query.max_transfers = 3
+query.max_travel_time = timedelta(hours=10)
+
+# Set match modes
+query.start_match_mode = ng.LocationMatchMode.EQUIVALENT
+query.dest_match_mode = ng.LocationMatchMode.EQUIVALENT
 ```
 
 ### Offset
@@ -379,18 +435,29 @@ query.max_transfers = 3
 Location offset for start/destination.
 
 ```python
+from datetime import timedelta
+
 Offset(
     target: LocationIdx,
-    duration: Duration,
-    transport_mode: TransportModeId = 0
+    duration: timedelta,  # Use timedelta, not Duration
+    transport_mode: int = 0  # Use int, not TransportModeId
 )
+```
+
+**Example:**
+```python
+from datetime import timedelta
+
+# Correct usage:
+query.start = [ng.Offset(start_loc, timedelta(0), 0)]
+query.destination = [ng.Offset(dest_loc, timedelta(minutes=5), 0)]
 ```
 
 **Methods:**
 
 - `target() -> LocationIdx`: Get target location
-- `duration() -> Duration`: Get duration
-- `type() -> TransportModeId`: Get transport mode
+- `duration() -> Duration`: Get duration (returns Duration object)
+- `type() -> int`: Get transport mode
 
 ### ViaStop
 
@@ -439,13 +506,19 @@ Routing result representing one journey.
 
 ```python
 for journey in journeys:
-    print(f"Departure: {journey.departure_time()}")
-    print(f"Arrival: {journey.arrival_time()}")
+    # Note: departure_time() and arrival_time() may show 1970 dates
+    # due to datetime conversion issues in bindings
     print(f"Travel time: {journey.travel_time().count()} minutes")
     print(f"Transfers: {journey.transfers}")
+    print(f"Number of legs: {len(journey)}")
 
     for leg in journey.legs:
-        print(f"  {leg}")
+        # Access 'from' with getattr since it's a Python keyword
+        from_loc = getattr(leg, 'from')
+        to_loc = leg.to
+        from_name = timetable.get_location_name(from_loc)
+        to_name = timetable.get_location_name(to_loc)
+        print(f"  {from_name} -> {to_name}")
 ```
 
 ### Leg

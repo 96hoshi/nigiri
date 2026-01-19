@@ -62,11 +62,9 @@ def explore_location_types(timetable):
     print("\n=== Location Types Distribution ===")
     
     type_counts = {
-        ng.LocationType.STOP: 0,
+        ng.LocationType.TRACK: 0,
         ng.LocationType.STATION: 0,
-        ng.LocationType.ENTRANCE: 0,
-        ng.LocationType.GENERALIZED_NODE: 0,
-        ng.LocationType.BOARDING_AREA: 0,
+        ng.LocationType.GENERATED_TRACK: 0,
     }
     
     for i in range(timetable.n_locations()):

@@ -1,5 +1,7 @@
 # PyNigiri Quick Reference
 
+⚠️ **Important**: Use `datetime`/`timedelta` instead of `ng.UnixTime`/`ng.Duration` (see below)
+
 ## Installation
 ```bash
 pip install ./python
@@ -10,9 +12,11 @@ pip install ./python
 ### Load Timetable
 ```python
 import pynigiri as ng
+from datetime import date
 
+current_year = date.today().year
 sources = [ng.TimetableSource("gtfs", "/path/to/gtfs")]
-tt = ng.load_timetable(sources, "2024-01-01", "2024-12-31")
+tt = ng.load_timetable(sources, f"{current_year}-01-01", f"{current_year}-12-31")
 ```
 
 ### Find Locations
@@ -24,13 +28,21 @@ coords = tt.get_location_coords(loc)
 
 ### Create Query
 ```python
-from datetime import datetime
+from datetime import datetime, timedelta
 
 query = ng.Query()
-query.start_time = ng.UnixTime(int(datetime.now().timestamp()))
-query.start = [ng.Offset(start_loc, ng.Duration(0), ng.TransportModeId(0))]
-query.destination = [ng.Offset(dest_loc, ng.Duration(0), ng.TransportModeId(0))]
-query.max_transfers = 3
+
+# CRITICAL: Convert to MINUTES (not seconds!)
+query_time = datetime(2026, 1, 15, 10, 0, 0)
+query.start_time = int(query_time.timestamp()) // 60  # Divide by 60!
+
+# Use timedelta and plain int
+query.start = [ng.Offset(start_loc, timedelta(0), 0)]
+query.destination = [ng.Offset(dest_loc, timedelta(0), 0)]
+query.max_transfers = 6
+query.max_travel_time = timedelta(hours=10)
+query.start_match_mode = ng.LocationMatchMode.EQUIVALENT
+query.dest_match_mode = ng.LocationMatchMode.EQUIVALENT
 ```
 
 ### Route
@@ -41,8 +53,10 @@ for journey in journeys:
     print(f"Duration: {journey.travel_time().count()} min")
     print(f"Transfers: {journey.transfers}")
     for leg in journey.legs:
-        from_name = tt.get_location_name(leg.from_)
-        to_name = tt.get_location_name(leg.to_)
+        # Use getattr for 'from' (Python keyword)
+        from_loc = getattr(leg, 'from')
+        from_name = tt.get_location_name(from_loc)
+        to_name = tt.get_location_name(leg.to)
         print(f"  {from_name} → {to_name}")
 ```
 
@@ -50,17 +64,23 @@ for journey in journeys:
 
 ### Via Stops
 ```python
+from datetime import timedelta
+
 via = ng.ViaStop()
 via.location = intermediate_loc
-via.stay = ng.Duration(10)  # 10 min minimum stay
+via.stay = timedelta(minutes=10)  # 10 min minimum stay
 query.via_stops = [via]
 ```
 
 ### Time Interval
 ```python
-start = ng.UnixTime(int(datetime.now().timestamp()))
-end = ng.UnixTime(int((datetime.now() + timedelta(hours=2)).timestamp()))
-query.start_time = ng.TimeInterval(start, end)
+from datetime import datetime, timedelta
+
+# For time intervals, still use integers (minutes)
+start_time = datetime.now()
+end_time = start_time + timedelta(hours=2)
+query.start_time = int(start_time.timestamp()) // 60
+# Note: TimeInterval support may have limitations
 ```
 
 ### Transport Filters
@@ -98,21 +118,27 @@ journeys = ng.route_with_rt(tt, rt_tt, query)
 
 ## Common Types
 
-| Type | Purpose | Example |
-|------|---------|---------|
+⚠️ **Note:** Use Python's `datetime`/`timedelta` instead of `Duration`/`UnixTime` for inputs!
+
+| Type | Purpose | Recommended Usage |
+|------|---------|-------------------|
 | `LocationIdx(n)` | Location index | `ng.LocationIdx(42)` |
-| `Duration(m)` | Time in minutes | `ng.Duration(30)` |
-| `UnixTime(s)` | Unix timestamp | `ng.UnixTime(1234567890)` |
+| `timedelta(minutes=m)` | Duration (use instead of Duration) | `timedelta(minutes=30)` |
+| `datetime(...)` | Timestamp (use instead of UnixTime) | `datetime(2026, 1, 15, 10, 0)` |
 | `LatLng(lat, lng)` | Coordinates | `ng.LatLng(52.52, 13.40)` |
-| `Offset(loc, dur, mode)` | Start/dest point | `ng.Offset(loc, ng.Duration(0), ng.TransportModeId(0))` |
+| `Offset(loc, dur, mode)` | Start/dest point | `ng.Offset(loc, timedelta(0), 0)` |
 
 ## Enums
 
 ### Transport Classes (Clasz)
-`AIR`, `COACH`, `HIGHSPEED`, `LONG_DISTANCE`, `NIGHT`, `REGIONAL`, `REGIONAL_FAST`, `METRO`, `SUBWAY`, `TRAM`, `BUS`, `SHIP`, `OTHER`
+`AIR`, `COACH`, `HIGHSPEED`, `LONG_DISTANCE`, `NIGHT`, `REGIONAL`, `REGIONAL_FAST`, `SUBWAY`, `TRAM`, `BUS`, `SHIP`, `OTHER`
+
+⚠️ **Note:** Use `SUBWAY` (not `METRO`)
 
 ### Location Types
-`STOP`, `STATION`, `ENTRANCE`, `GENERALIZED_NODE`, `BOARDING_AREA`
+`TRACK`, `STATION`, `GENERATED_TRACK`
+
+⚠️ **Note:** Only these three are exposed
 
 ### Event Types
 `DEP`, `ARR`
@@ -121,7 +147,9 @@ journeys = ng.route_with_rt(tt, rt_tt, query)
 `FORWARD`, `BACKWARD`
 
 ### Location Match Modes
-`EXACT`, `EQUIVALENT`, `CHILD`, `ON_TRIP`
+`EXACT`, `EQUIVALENT`, `ONLY_CHILDREN`, `ON_TRIP`
+
+⚠️ **Note:** Use `ONLY_CHILDREN` (not `CHILD`)
 
 ## Timetable Methods
 
@@ -137,13 +165,15 @@ journeys = ng.route_with_rt(tt, rt_tt, query)
 
 ## Query Parameters
 
+⚠️ **Critical:** For `start_time`, convert to MINUTES: `int(timestamp()) // 60`
+
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `start_time` | `UnixTime\|TimeInterval` | - | Start time |
+| `start_time` | `int` (minutes) | - | Start time (convert with `// 60`) |
 | `start` | `List[Offset]` | `[]` | Start locations |
 | `destination` | `List[Offset]` | `[]` | Destinations |
 | `max_transfers` | `int` | `7` | Max transfers |
-| `max_travel_time` | `Duration` | - | Max duration |
+| `max_travel_time` | `timedelta` | - | Max duration |
 | `via_stops` | `List[ViaStop]` | `[]` | Via stops |
 | `require_bike_transport` | `bool` | `False` | Need bike |
 | `require_car_transport` | `bool` | `False` | Need car |
@@ -153,10 +183,10 @@ journeys = ng.route_with_rt(tt, rt_tt, query)
 | Property | Type | Description |
 |----------|------|-------------|
 | `legs` | `List[Leg]` | Journey legs |
-| `start_time` | `UnixTime` | Start time |
-| `dest_time` | `UnixTime` | End time |
 | `transfers` | `int` | Transfer count |
-| `travel_time()` | `Duration` | Total duration |
+| `travel_time()` | `Duration` | Total duration (call `.count()` for minutes) |
+
+⚠️ **Note:** `start_time`/`dest_time` may show as 1970 dates due to conversion issues
 | `departure_time()` | `UnixTime` | Departure |
 | `arrival_time()` | `UnixTime` | Arrival |
 
