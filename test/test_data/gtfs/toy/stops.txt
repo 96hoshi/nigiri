@@ -1,0 +1,7 @@
+stop_id,stop_name,stop_lat,stop_lon,location_type,parent_station
+station_a,Station A,52.520008,13.404954,1,
+platform_a1,Station A Platform 1,52.520008,13.404954,0,station_a
+station_b,Station B,52.530008,13.414954,1,
+platform_b1,Station B Platform 1,52.530008,13.414954,0,station_b
+station_c,Station C,52.510008,13.424954,1,
+platform_c1,Station C Platform 1,52.510008,13.424954,0,station_c
