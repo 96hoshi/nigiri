@@ -59,7 +59,7 @@ jobs:
             CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DNO_BUILDCACHE=ON"
           # Installa dipendenze
           CIBW_BEFORE_BUILD_LINUX: >
-            yum install -y openssl-devel python3-devel gcc-toolset-12-gcc gcc-toolset-12-gcc-c++
+            yum install -y openssl-devel python3-devel gcc-toolset-12-gcc gcc-toolset-12-gcc-c++ gcc-toolset-12-libatomic-devel
           CIBW_BEFORE_BUILD_MACOS: >
             brew install openssl || true
           # Disabilita i test per ora
