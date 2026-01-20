@@ -1,6 +1,113 @@
 [build-system]
 requires = ["scikit-build-core>=0.3.3", "pybind11"]
-build-backend = "scikit_build_core.build"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+- Ri-configura il Trusted Publishing con il nuovo nome- Cambia `name` in `python/pyproject.toml` (es. `pynigiri-ml` o simile)### Nome pacchetto già preso- O usa un API token nelle secrets di GitHub- Verifica di aver configurato Trusted Publishing### Upload fallisce- Verifica che le dipendenze C++ siano disponibili- Controlla i log in: https://github.com/motis-project/nigiri/actions### Build fallisce su GitHub Actions## Troubleshooting- Segui il [Semantic Versioning](https://semver.org/): MAJOR.MINOR.PATCH- La build completa su GitHub Actions richiede ~30-45 minuti- PyPI supporta solo wheel manylinux, non `linux_x86_64` generici- Non puoi cancellare o ri-caricare la stessa versione- **Una versione può essere caricata UNA SOLA VOLTA** su PyPI## Note Importanti```pip install pynigiri==0.1.1# O per una versione specificapip install pynigiri```bashDopo la pubblicazione, attendi qualche minuto e poi testa:## Verifica Installazione```twine upload wheelhouse/*.whl dist/*.tar.gz# Carica su PyPIcibuildwheel --platform linuxcd python# Costruisci i wheel (richiede Docker per Linux wheels)pip install cibuildwheel# Installa cibuildwheel```bashSe preferisci costruire e caricare manualmente:### Metodo 3: Build Locale + Upload ManualeQuesto costruirà i wheel ma NON li caricherà su PyPI (solo come artefatti scaricabili).4. Clicca "Run workflow"3. Seleziona il branch2. Clicca "Run workflow"1. Vai su https://github.com/motis-project/nigiri/actions/workflows/wheels.yml### Metodo 2: Trigger Manuale5. I pacchetti verranno automaticamente caricati su PyPI   - **Windows**: AMD64 (Python 3.8-3.12)   - **macOS**: x86_64 (Intel), arm64 (Apple Silicon)   - **Linux**: x86_64, aarch64 (Python 3.8-3.12)4. GitHub Actions costruirà automaticamente i wheel per:   - Clicca "Publish release"   - Descrivi le modifiche   - Release title: `v0.1.1`   - Tag: `v0.1.1`   - Vai su https://github.com/motis-project/nigiri/releases/new3. Crea una release su GitHub:   ```   git push   git commit -m "Bump version to 0.1.1"   git add python/pyproject.toml   ```bash2. Commit e push:   ```   version = "0.1.1"  # Incrementa la versione   ```toml1. Aggiorna la versione in `python/pyproject.toml`:### Metodo 1: Release GitHub (Automatico - Raccomandato)## Come Pubblicare una Nuova Versione4. Salva   - **Environment name**: `pypi`   - **Workflow name**: `wheels.yml`   - **Repository name**: `nigiri`   - **Owner**: `motis-project` (o il tuo username se è un fork)   - **PyPI Project Name**: `pynigiri`3. Compila:2. Clicca "Add a new pending publisher"1. Vai su https://pypi.org/manage/account/publishing/Il Trusted Publishing permette a GitHub Actions di pubblicare su PyPI senza token:## Setup Trusted Publishing (Raccomandato)2. Configurare Trusted Publishing su PyPI (raccomandato) oppure API token1. Account PyPI: https://pypi.org/account/register/## Prerequisitibuild-backend = "scikit_build_core.build"
 
 [project]
 name = "pynigiri"
@@ -10,8 +117,11 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
-    {name = "nigiri contributors"}
+    {name = "Marta Lo Cascio", email = "martalocascio96@gmail.com"},
 ]
+homepage = "https://github.com/motis-project/nigiri"
+repository = "https://github.com/motis-project/nigiri"
+
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -49,3 +159,20 @@ target-version = ['py38']
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+
+[tool.cibuildwheel]
+# Build per Python 3.8-3.12
+build = "cp38-* cp39-* cp310-* cp311-* cp312-*"
+
+# Salta musllinux (Alpine) e PyPy
+skip = "*-musllinux_* pp*"
+
+# Architetture da costruire
+[tool.cibuildwheel.linux]
+archs = ["x86_64", "aarch64"]
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]

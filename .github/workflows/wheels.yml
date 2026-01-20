@@ -1,0 +1,84 @@
+name: Build and Publish Python Wheels
+
+on:
+  push:
+    tags:
+      - 'v*'  # Attiva su tag versione (es. v0.1.0)
+  workflow_dispatch:  # Permette esecuzione manuale
+  release:
+    types: [published]
+
+jobs:
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]  # macos-13=x86_64, macos-14=arm64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.22
+        env:
+          CIBW_BUILD: cp38-* cp39-* cp310-* cp311-* cp312-*
+          CIBW_SKIP: "*-musllinux_* pp*"  # Salta musllinux e PyPy
+          CIBW_ARCHS_LINUX: x86_64 aarch64
+          CIBW_ARCHS_MACOS: x86_64 arm64
+          CIBW_ARCHS_WINDOWS: AMD64
+          CIBW_BUILD_VERBOSITY: 1
+          # Configura CMake per il binding Python
+          CIBW_ENVIRONMENT: >
+            CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+          # Installa dipendenze necessarie per la build
+          CIBW_BEFORE_BUILD_LINUX: yum install -y openssl-devel || apt-get install -y libssl-dev
+          # Test delle wheel dopo la build
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: pytest {project}/python/tests
+          CIBW_PROJECT_REQUIRES_PYTHON: ">=3.8"
+        with:
+          package-dir: ./python
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
+          path: ./wheelhouse/*.whl
+
+  build_sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build sdist
+        run: pipx run build --sdist ./python
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-sdist
+          path: python/dist/*.tar.gz
+
+  upload_pypi:
+    needs: [build_wheels, build_sdist]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # Per trusted publishing
+    if: github.event_name == 'release' && github.event.action == 'published'
+    
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
