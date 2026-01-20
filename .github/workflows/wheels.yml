@@ -48,14 +48,15 @@ jobs:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
           # Configura CMake e compilatore
           CIBW_ENVIRONMENT_LINUX: >
+            CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DNO_BUILDCACHE=ON"
             CC=/opt/rh/gcc-toolset-12/root/usr/bin/gcc
             CXX=/opt/rh/gcc-toolset-12/root/usr/bin/g++
             PATH=/opt/rh/gcc-toolset-12/root/usr/bin:$PATH
           CIBW_ENVIRONMENT_MACOS: >
-            CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+            CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DNO_BUILDCACHE=ON"
             MACOSX_DEPLOYMENT_TARGET=10.15
           CIBW_ENVIRONMENT_WINDOWS: >
-            CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON"
+            CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DNO_BUILDCACHE=ON"
           # Installa dipendenze
           CIBW_BEFORE_BUILD_LINUX: >
             yum install -y openssl-devel python3-devel gcc-toolset-12-gcc gcc-toolset-12-gcc-c++
