@@ -5,7 +5,8 @@ project(pynigiri)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Find Python and pybind11
-find_package(Python3 COMPONENTS Interpreter Development REQUIRED)
+# In cibuildwheel, Python3_EXECUTABLE is set correctly
+find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 
 # Fetch pybind11 if not available
 include(FetchContent)

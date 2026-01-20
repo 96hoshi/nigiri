@@ -48,9 +48,9 @@ jobs:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
           # Configura CMake e compilatore
           CIBW_ENVIRONMENT_LINUX: >
-            CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON"
             CC=/opt/rh/gcc-toolset-12/root/usr/bin/gcc
             CXX=/opt/rh/gcc-toolset-12/root/usr/bin/g++
+            PATH=/opt/rh/gcc-toolset-12/root/usr/bin:$PATH
           CIBW_ENVIRONMENT_MACOS: >
             CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON"
             MACOSX_DEPLOYMENT_TARGET=10.15
