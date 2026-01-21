@@ -38,4 +38,4 @@ target_include_directories(pynigiri PRIVATE
 target_compile_features(pynigiri PRIVATE cxx_std_23)
 
 # Install the module
-install(TARGETS pynigiri DESTINATION .)
+install(TARGETS pynigiri DESTINATION pynigiri)
