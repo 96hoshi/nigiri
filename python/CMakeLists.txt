@@ -23,7 +23,7 @@ file(GLOB_RECURSE PYNIGIRI_SOURCES
 )
 
 # Create the Python module
-pybind11_add_module(pynigiri ${PYNIGIRI_SOURCES})
+pybind11_add_module(pynigiri MODULE ${PYNIGIRI_SOURCES})
 
 # Link with the nigiri library
 target_link_libraries(pynigiri PRIVATE nigiri)
@@ -38,4 +38,4 @@ target_include_directories(pynigiri PRIVATE
 target_compile_features(pynigiri PRIVATE cxx_std_23)
 
 # Install the module
-install(TARGETS pynigiri DESTINATION pynigiri)
+install(TARGETS pynigiri LIBRARY DESTINATION pynigiri)

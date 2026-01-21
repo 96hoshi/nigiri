@@ -17,6 +17,15 @@ jobs:
         os: [ubuntu-latest]  # Windows and macOS disabled for now
 
     steps:
+      - name: Cache CMake build
+        uses: actions/cache@v4
+        with:
+          path: |
+            python_build/
+            build/
+          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt', '**/*.cc', '**/*.h') }}
+          restore-keys: |
+            ${{ runner.os }}-cmake-
       - uses: actions/checkout@v4
         with:
           submodules: recursive
