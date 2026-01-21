@@ -31,9 +31,9 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-13 g++-13
-          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100
-          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+          sudo apt-get install -y gcc-14 g++-14
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.22
@@ -49,9 +49,9 @@ jobs:
           # Configura CMake e compilatore
           CIBW_ENVIRONMENT_LINUX: >
             CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DNO_BUILDCACHE=ON"
-            CC=/opt/rh/gcc-toolset-12/root/usr/bin/gcc
-            CXX=/opt/rh/gcc-toolset-12/root/usr/bin/g++
-            PATH=/opt/rh/gcc-toolset-12/root/usr/bin:$PATH
+            CC=/opt/rh/gcc-toolset-14/root/usr/bin/gcc
+            CXX=/opt/rh/gcc-toolset-14/root/usr/bin/g++
+            PATH=/opt/rh/gcc-toolset-14/root/usr/bin:$PATH
             LDFLAGS="-lpthread -ldl"
           CIBW_ENVIRONMENT_MACOS: >
             CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DNO_BUILDCACHE=ON"
@@ -60,7 +60,7 @@ jobs:
             CMAKE_ARGS="-DPYTHON_BINDING=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DNO_BUILDCACHE=ON"
           # Installa dipendenze
           CIBW_BEFORE_BUILD_LINUX: >
-            yum install -y openssl-devel python3-devel gcc-toolset-12-gcc gcc-toolset-12-gcc-c++ gcc-toolset-12-libatomic-devel
+            yum install -y openssl-devel python3-devel gcc-toolset-14-gcc gcc-toolset-14-gcc-c++ gcc-toolset-14-libatomic-devel
           CIBW_BEFORE_BUILD_MACOS: >
             brew install openssl || true
           # Disabilita i test per ora
