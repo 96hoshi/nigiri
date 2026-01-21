@@ -17,15 +17,13 @@ jobs:
         os: [ubuntu-latest]  # Windows and macOS disabled for now
 
     steps:
-      - name: Cache CMake build
+      - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
-          path: |
-            python_build/
-            build/
-          key: ${{ runner.os }}-cmake-${{ hashFiles('**/CMakeLists.txt', '**/*.cc', '**/*.h') }}
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml', '**/requirements.txt') }}
           restore-keys: |
-            ${{ runner.os }}-cmake-
+            ${{ runner.os }}-pip-
       - uses: actions/checkout@v4
         with:
           submodules: recursive
